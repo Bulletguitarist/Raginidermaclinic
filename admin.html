@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Ragini's Derma Clinic</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --red: #C0392B; --red-deep: #96231A;
+    --bg: #F5F2EE; --white: #fff;
+    --charcoal: #1C1C1E; --mid: #4A4A4C;
+    --muted: #8A8A8E; --border: #E8E4DF;
+    --green: #27AE60; --orange: #E67E22; --blue: #2980B9;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Jost', sans-serif; background: var(--bg); color: var(--charcoal); min-height: 100vh; }
+
+  /* ── LOGIN ── */
+  #loginScreen {
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+    background: var(--charcoal);
+  }
+  .login-card {
+    background: var(--white); border-radius: 8px;
+    padding: 48px 40px; width: 100%; max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-brand { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
+  .login-title { font-family: 'Cormorant', serif; font-size: 1.8rem; font-weight: 500; color: var(--charcoal); margin-bottom: 28px; }
+  .login-group { margin-bottom: 16px; }
+  .login-group label { display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mid); margin-bottom: 6px; }
+  .login-group input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 4px; font-family: 'Jost', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  .login-group input:focus { border-color: var(--red); }
+  .login-btn { width: 100%; background: var(--charcoal); color: var(--white); border: none; padding: 13px; border-radius: 4px; font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: 0.08em; text-transform: uppercase; transition: background 0.2s; }
+  .login-btn:hover { background: var(--red); }
+  .login-err { color: var(--red); font-size: 0.78rem; margin-top: 10px; text-align: center; display: none; }
+
+  /* ── DASHBOARD ── */
+  #dashboard { display: none; }
+  header {
+    background: var(--white); border-bottom: 1px solid var(--border);
+    padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .hdr-brand-tag { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); display: block; }
+  .hdr-brand-name { font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 500; color: var(--charcoal); }
+  .hdr-right { display: flex; align-items: center; gap: 16px; }
+  .hdr-user { font-size: 0.78rem; color: var(--muted); }
+  .logout-btn { background: none; border: 1.5px solid var(--border); padding: 7px 16px; border-radius: 4px; font-size: 0.74rem; font-weight: 600; cursor: pointer; color: var(--mid); font-family: 'Jost', sans-serif; transition: all 0.2s; }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  main { padding: 32px; max-width: 1280px; margin: 0 auto; }
+
+  /* ── STATS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--white); border-radius: 6px; padding: 20px 24px; border-left: 3px solid var(--border); }
+  .stat-card.red { border-left-color: var(--red); }
+  .stat-card.orange { border-left-color: var(--orange); }
+  .stat-card.green { border-left-color: var(--green); }
+  .stat-card.blue { border-left-color: var(--blue); }
+  .stat-val { font-family: 'Cormorant', serif; font-size: 2.2rem; font-weight: 500; color: var(--charcoal); line-height: 1; display: block; }
+  .stat-lbl { font-size: 0.68rem; color: var(--muted); font-weight: 500; margin-top: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* ── TOOLBAR ── */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .toolbar h2 { font-family: 'Cormorant', serif; font-size: 1.4rem; font-weight: 500; flex: 1; }
+  .filter-btn { padding: 7px 18px; border-radius: 100px; border: 1.5px solid var(--border); font-size: 0.74rem; font-weight: 500; cursor: pointer; background: var(--white); color: var(--mid); font-family: 'Jost', sans-serif; transition: all 0.2s; }
+  .filter-btn:hover, .filter-btn.active { background: var(--charcoal); color: var(--white); border-color: var(--charcoal); }
+  .filter-btn.pending.active { background: var(--orange); border-color: var(--orange); }
+  .filter-btn.confirmed.active { background: var(--green); border-color: var(--green); }
+  .filter-btn.completed.active { background: var(--blue); border-color: var(--blue); }
+  .filter-btn.cancelled.active { background: var(--muted); border-color: var(--muted); }
+  .refresh-btn { padding: 7px 16px; border-radius: 4px; border: 1.5px solid var(--border); font-size: 0.74rem; font-weight: 600; cursor: pointer; background: var(--white); color: var(--mid); font-family: 'Jost', sans-serif; transition: all 0.2s; }
+  .refresh-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--white); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 800px; }
+  thead { background: var(--charcoal); }
+  thead th { padding: 13px 16px; text-align: left; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); font-family: 'Jost', sans-serif; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #faf8f5; }
+  td { padding: 14px 16px; vertical-align: middle; }
+  .patient-name { font-weight: 600; font-size: 0.88rem; }
+  .patient-phone a { color: var(--red); text-decoration: none; font-weight: 500; }
+  .treatment-pill { display: inline-block; background: var(--bg); padding: 3px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 600; color: var(--mid); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .badge.pending { background: #fef3e2; color: #d68910; }
+  .badge.confirmed { background: #eafaf1; color: #1e8449; }
+  .badge.completed { background: #e8f4fd; color: #1a5276; }
+  .badge.cancelled { background: #f2f3f4; color: #7f8c8d; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .act-btn { padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border); font-size: 0.68rem; font-weight: 600; cursor: pointer; background: var(--white); font-family: 'Jost', sans-serif; transition: all 0.15s; }
+  .act-btn.confirm { color: var(--green); border-color: var(--green); }
+  .act-btn.confirm:hover { background: var(--green); color: var(--white); }
+  .act-btn.complete { color: var(--blue); border-color: var(--blue); }
+  .act-btn.complete:hover { background: var(--blue); color: var(--white); }
+  .act-btn.cancel { color: var(--muted); }
+  .act-btn.cancel:hover { background: var(--muted); color: var(--white); border-color: var(--muted); }
+  .act-btn.delete { color: var(--red); border-color: #f5c6c6; }
+  .act-btn.delete:hover { background: var(--red); color: var(--white); border-color: var(--red); }
+  .act-btn.wa { color: #25D366; border-color: #25D366; }
+  .act-btn.wa:hover { background: #25D366; color: var(--white); }
+  .time-text { font-size: 0.76rem; color: var(--mid); }
+  .concern-text { font-size: 0.74rem; color: var(--muted); font-style: italic; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .loading { text-align: center; padding: 48px; color: var(--muted); font-size: 0.88rem; }
+  .empty-state { text-align: center; padding: 64px 20px; color: var(--muted); }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  @media (max-width: 768px) {
+    main { padding: 16px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">Ragini's Derma Clinic</div>
+    <div class="login-title">Admin Panel</div>
+    <div class="login-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@raginisdermaclinic.com" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="login-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="loginErr">Invalid email or password.</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <header>
+    <div>
+      <span class="hdr-brand-tag">Ragini's Derma Clinic</span>
+      <span class="hdr-brand-name">Appointment Dashboard</span>
+    </div>
+    <div class="hdr-right">
+      <span class="hdr-user" id="adminEmail"></span>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card red"><span class="stat-val" id="st-total">—</span><span class="stat-lbl">Total Bookings</span></div>
+      <div class="stat-card orange"><span class="stat-val" id="st-pending">—</span><span class="stat-lbl">Pending</span></div>
+      <div class="stat-card green"><span class="stat-val" id="st-confirmed">—</span><span class="stat-lbl">Confirmed</span></div>
+      <div class="stat-card blue"><span class="stat-val" id="st-completed">—</span><span class="stat-lbl">Completed</span></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <h2>Appointments</h2>
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn pending" onclick="setFilter('pending',this)">Pending</button>
+      <button class="filter-btn confirmed" onclick="setFilter('confirmed',this)">Confirmed</button>
+      <button class="filter-btn completed" onclick="setFilter('completed',this)">Completed</button>
+      <button class="filter-btn cancelled" onclick="setFilter('cancelled',this)">Cancelled</button>
+      <button class="refresh-btn" onclick="loadBookings()">↻ Refresh</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="loading" id="tableLoading">Loading appointments...</div>
+      <table id="bookingTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Patient</th>
+            <th>Mobile</th>
+            <th>Treatment</th>
+            <th>Preferred Time</th>
+            <th>Concern</th>
+            <th>Status</th>
+            <th>Booked On</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="bookingBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <div class="empty-icon">📋</div>
+        <p>No appointments found.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://xjxnnvpbamzajocbaajr.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqeG5udnBiYW16YWpvY2JhYWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1Mjk0MzcsImV4cCI6MjA4ODEwNTQzN30.zqxSN7kv3hASKbvYNTVDWXmyBWZ0c-Akls6wl8ND9-g';
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let allBookings = [];
+  let currentFilter = 'all';
+  let currentUser = null;
+
+  // ── AUTH ──
+  async function doLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPass').value;
+    const err   = document.getElementById('loginErr');
+    err.style.display = 'none';
+    try {
+      const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      currentUser = data.user;
+      showDashboard(email);
+    } catch(e) {
+      err.style.display = 'block';
+    }
+  }
+
+  async function doLogout() {
+    await db.auth.signOut();
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginPass').value = '';
+  }
+
+  function showDashboard(email) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('adminEmail').textContent = email;
+    loadBookings();
+  }
+
+  // Check existing session
+  (async () => {
+    const { data } = await db.auth.getSession();
+    if (data.session) {
+      currentUser = data.session.user;
+      showDashboard(data.session.user.email);
+    }
+  })();
+
+  // ── LOAD BOOKINGS ──
+  async function loadBookings() {
+    document.getElementById('tableLoading').style.display = 'block';
+    document.getElementById('bookingTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    try {
+      const { data, error } = await db
+        .from('appointments')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      allBookings = data || [];
+      updateStats();
+      renderTable();
+    } catch(e) {
+      document.getElementById('tableLoading').textContent = 'Error loading: ' + e.message;
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('st-total').textContent     = allBookings.length;
+    document.getElementById('st-pending').textContent   = allBookings.filter(b => b.status === 'pending').length;
+    document.getElementById('st-confirmed').textContent = allBookings.filter(b => b.status === 'confirmed').length;
+    document.getElementById('st-completed').textContent = allBookings.filter(b => b.status === 'completed').length;
+  }
+
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  }
+
+  function renderTable() {
+    const filtered = currentFilter === 'all'
+      ? allBookings
+      : allBookings.filter(b => b.status === currentFilter);
+
+    document.getElementById('tableLoading').style.display = 'none';
+
+    if (filtered.length === 0) {
+      document.getElementById('bookingTable').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('bookingTable').style.display = 'table';
+
+    const tbody = document.getElementById('bookingBody');
+    tbody.innerHTML = filtered.map((b, i) => {
+      const dt = b.preferred_datetime
+        ? new Date(b.preferred_datetime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+        : '<span style="color:var(--muted)">Not specified</span>';
+      const booked = b.created_at
+        ? new Date(b.created_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+      const name = `${b.first_name || ''} ${b.last_name || ''}`.trim();
+      const waMsg = `Hi ${b.first_name}, your appointment at Ragini's Derma Clinic for ${b.treatment} is confirmed. Please arrive on time. Thank you!`;
+      const phone10 = (b.phone || '').replace(/\D/g, '').slice(-10);
+
+      return `<tr>
+        <td style="color:var(--muted);font-size:0.72rem;">${i + 1}</td>
+        <td><div class="patient-name">${name}</div></td>
+        <td><a href="tel:${b.phone}">${b.phone}</a></td>
+        <td><span class="treatment-pill">${b.treatment || '—'}</span></td>
+        <td><div class="time-text">${dt}</div></td>
+        <td><div class="concern-text" title="${b.concern || ''}">${b.concern || '—'}</div></td>
+        <td><span class="badge ${b.status}">${b.status}</span></td>
+        <td><div class="time-text">${booked}</div></td>
+        <td>
+          <div class="actions">
+            ${b.status !== 'confirmed' && b.status !== 'completed'
+              ? `<button class="act-btn confirm" onclick="updateStatus('${b.id}','confirmed')">Confirm</button>` : ''}
+            ${b.status === 'confirmed'
+              ? `<button class="act-btn complete" onclick="updateStatus('${b.id}','completed')">Done</button>` : ''}
+            ${b.status !== 'cancelled'
+              ? `<button class="act-btn cancel" onclick="updateStatus('${b.id}','cancelled')">Cancel</button>` : ''}
+            <a href="https://wa.me/91${phone10}?text=${encodeURIComponent(waMsg)}" target="_blank">
+              <button class="act-btn wa">WhatsApp</button>
+            </a>
+            <button class="act-btn delete" onclick="deleteAppt('${b.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function updateStatus(id, status) {
+    try {
+      const { error } = await db.from('appointments').update({ status }).eq('id', id);
+      if (error) throw error;
+      const appt = allBookings.find(b => b.id === id);
+      if (appt) appt.status = status;
+      updateStats();
+      renderTable();
+    } catch(e) { alert('Update failed: ' + e.message); }
+  }
+
+  async function deleteAppt(id) {
+    if (!confirm('Delete this appointment? This cannot be undone.')) return;
+    try {
+      const { error } = await db.from('appointments').delete().eq('id', id);
+      if (error) throw error;
+      allBookings = allBookings.filter(b => b.id !== id);
+      updateStats();
+      renderTable();
+    } catch(e) { alert('Delete failed: ' + e.message); }
+  }
+</script>
+</body>
+</html>
